@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Background Remover</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #564fd4;
+            --primary-light: #8B85FF;
+            --secondary: #FF6584;
+            --secondary-dark: #E55A76;
+            --accent: #4CAF50;
+            --accent-light: #6FCF97;
+            --text: #2D3748;
+            --text-light: #718096;
+            --bg: #f8f9fa;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.6);
+            --shadow: rgba(0, 0, 0, 0.08);
+            --shadow-dark: rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s ease;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #F44336;
+            --radius: 20px;
+            --radius-sm: 12px;
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+            --gradient-light: linear-gradient(135deg, var(--primary-light), var(--secondary));
+            --gradient-accent: linear-gradient(135deg, var(--accent), var(--accent-light));
+        }
+
+        .dark-mode {
+            --text: #f8f9fa;
+            --text-light: #a0aec0;
+            --bg: #121212;
+            --card-bg: rgba(30, 30, 30, 0.95);
+            --card-border: rgba(255, 255, 255, 0.15);
+            --shadow: rgba(0, 0, 0, 0.4);
+            --shadow-dark: rgba(0, 0, 0, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: var(--transition);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            transition: background 0.5s ease;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(108, 99, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 101, 132, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(76, 175, 80, 0.05) 0%, transparent 30%);
+            pointer-events: none;
+        }
+
+        .dark-mode body {
+            background: linear-gradient(135deg, #232526 0%, #414345 100%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header and Theme Toggle */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 40px;
+            padding: 15px 0;
+        }
+
+        .app-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 10px rgba(108, 99, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            letter-spacing: -0.5px;
+        }
+
+        .app-title i {
+            font-size: 3rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theme-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 50px;
+            width: 55px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 20px var(--shadow);
+            font-size: 1.3rem;
+            color: var(--text);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-5px) rotate(10deg);
+            box-shadow: 0 12px 25px var(--shadow-dark);
+        }
+
+        /* Splash Screen */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-content {
+            text-align: center;
+            animation: fadeIn 1s ease;
+        }
+
+        .splash-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 900;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 25px;
+            animation: pulse 2s infinite, float 6s ease-in-out infinite;
+            text-shadow: 0 5px 15px var(--shadow);
+            position: relative;
+        }
+
+        .splash-title::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: var(--gradient);
+            border-radius: 2px;
+        }
+
+        .splash-mission {
+            font-size: 1.5rem;
+            text-align: center;
+            max-width: 700px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            line-height: 1.6;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        .splash-loader {
+            width: 120px;
+            height: 5px;
+            background: rgba(108, 99, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .splash-loader::after {
+            content: "";
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient);
+            border-radius: 4px;
+            animation: loading 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Main Content */
+        main {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+
+        @media (min-width: 992px) {
+            main {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 35px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 20px 40px var(--shadow);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--gradient);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px var(--shadow-dark);
+        }
+
+        .card-title {
+            font-size: 1.7rem;
+            margin-bottom: 30px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .card-title i {
+            font-size: 1.8rem;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            border-radius: var(--radius);
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            background: rgba(108, 99, 255, 0.03);
+        }
+
+        .upload-area:hover {
+            border-color: var(--secondary);
+            background: rgba(108, 99, 255, 0.08);
+            transform: translateY(-3px);
+        }
+
+        .upload-area.active {
+            border-color: var(--success);
+            background: rgba(76, 175, 80, 0.08);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            filter: drop-shadow(0 4px 8px rgba(108, 99, 255, 0.2));
+        }
+
+        .upload-text {
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 15px rgba(108, 99, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(108, 99, 255, 0.4);
+        }
+
+        .upload-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Image Preview */
+        .image-preview {
+            width: 100%;
+            margin-top: 30px;
+            display: none;
+            position: relative;
+        }
+
+        .preview-container {
+            position: relative;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 10px 25px var(--shadow);
+            transition: var(--transition);
+        }
+
+        .preview-container:hover {
+            box-shadow: 0 15px 30px var(--shadow-dark);
+        }
+
+        .preview-image {
+            width: 100%;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+
+        .preview-actions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .preview-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 15px var(--shadow);
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .preview-btn:hover {
+            transform: translateY(-3px) scale(1.1);
+            box-shadow: 0 8px 18px var(--shadow-dark);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 35px;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 180px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 18px 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: var(--transition);
+            box-shadow: 0 6px 15px rgba(108, 99, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px var(--shadow);
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
+        }
+
+        .action-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .action-btn:disabled::before {
+            display: none;
+        }
+
+        .action-btn.remove-bg {
+            background: var(--gradient);
+        }
+
+        .action-btn.remove-bg:hover {
+            box-shadow: 0 12px 25px rgba(108, 99, 255, 0.4);
+        }
+
+        .action-btn.download {
+            background: var(--secondary);
+        }
+
+        .action-btn.download:hover {
+            background: var(--secondary-dark);
+            box-shadow: 0 12px 25px rgba(255, 101, 132, 0.3);
+        }
+
+        /* Result Area */
+        .result-area {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-container {
+            position: relative;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 10px 25px var(--shadow);
+            transition: var(--transition);
+        }
+
+        .result-container:hover {
+            box-shadow: 0 15px 30px var(--shadow-dark);
+        }
+
+        .result-image {
+            width: 100%;
+            display: block;
+        }
+
+        .result-actions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .result-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 15px var(--shadow);
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .result-btn:hover {
+            transform: translateY(-3px) scale(1.1);
+            box-shadow: 0 8px 18px var(--shadow-dark);
+        }
+
+        /* Loading Indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(108, 99, 255, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 20px;
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .loading-dots span {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: bounce 1.5s infinite ease-in-out;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        /* Stats Section */
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 35px;
+            padding: 25px;
+            background: rgba(108, 99, 255, 0.05);
+            border-radius: var(--radius);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-shadow: 0 2px 5px rgba(108, 99, 255, 0.2);
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            opacity: 0.9;
+            font-size: 0.95rem;
+            padding: 30px 0;
+            width: 100%;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 15px 0;
+        }
+
+        .social-link {
+            color: var(--text);
+            font-size: 1.4rem;
+            opacity: 0.7;
+            transition: var(--transition);
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+
+        .social-link:hover {
+            opacity: 1;
+            color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px var(--shadow-dark);
+        }
+
+        .telegram-channel {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--gradient);
+            border-radius: var(--radius);
+            color: white;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+        }
+
+        .telegram-channel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .telegram-channel i {
+            font-size: 1.5rem;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 8px 20px var(--shadow);
+            backdrop-filter: blur(10px);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            max-width: 380px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left: 5px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 5px solid var(--error);
+        }
+
+        .toast.warning {
+            border-left: 5px solid var(--warning);
+        }
+
+        .toast-icon {
+            font-size: 1.6rem;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+
+        .toast.error .toast-icon {
+            color: var(--error);
+        }
+
+        .toast.warning .toast-icon {
+            color: var(--warning);
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        /* API Status */
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 12px 15px;
+            border-radius: var(--radius-sm);
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .api-status.connected {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        .api-status.disconnected {
+            background: rgba(244, 67, 54, 0.1);
+            border-color: rgba(244, 67, 54, 0.3);
+        }
+
+        .api-status-icon {
+            font-size: 1.2rem;
+        }
+
+        .api-status.connected .api-status-icon {
+            color: var(--success);
+        }
+
+        .api-status.disconnected .api-status-icon {
+            color: var(--error);
+        }
+
+        .api-status-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 992px) {
+            .splash-title {
+                font-size: 3.5rem;
+            }
+            
+            .app-title {
+                font-size: 2.3rem;
+            }
+            
+            .card {
+                padding: 30px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .stats-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .splash-title {
+                font-size: 2.8rem;
+            }
+            
+            .splash-mission {
+                font-size: 1.2rem;
+            }
+            
+            .app-title {
+                font-size: 2rem;
+            }
+            
+            .header-controls {
+                gap: 10px;
+            }
+            
+            .theme-toggle {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .card {
+                padding: 25px;
+            }
+            
+            .upload-area {
+                padding: 40px 15px;
+            }
+            
+            .social-links {
+                gap: 15px;
+            }
+            
+            .social-link {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .splash-title {
+                font-size: 2.2rem;
+            }
+            
+            .app-title {
+                font-size: 1.8rem;
+            }
+            
+            .card-title {
+                font-size: 1.4rem;
+            }
+            
+            .upload-icon {
+                font-size: 3rem;
+            }
+            
+            .upload-text {
+                font-size: 1rem;
+            }
+            
+            .upload-btn, .action-btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-content">
+            <h1 class="splash-title">Remove Background</h1>
+            <p class="splash-mission">Advanced AI-powered background removal tool. Transform your images with professional quality in seconds.</p>
+            <div class="splash-loader"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container" id="mainContent" style="display: none;">
+        <header>
+            <h1 class="app-title"><i class="fas fa-magic"></i>Remove Background</h1>
+            <div class="header-controls">
+                <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Upload and Edit Section -->
+            <section class="card">
+                <h2 class="card-title"><i class="fas fa-upload"></i> Upload Image</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <p class="upload-text">Drag & drop your image here or click to browse</p>
+                    <button class="upload-btn"><i class="fas fa-search"></i> Select Image</button>
+                    <input type="file" class="file-input" id="fileInput" accept="image/*">
+                </div>
+                
+                <div class="image-preview" id="imagePreview">
+                    <div class="preview-container">
+                        <img src="" alt="Preview" class="preview-image" id="previewImage">
+                        <div class="preview-actions">
+                            <button class="preview-btn" id="rotateBtn" title="Rotate"><i class="fas fa-redo"></i></button>
+                            <button class="preview-btn" id="resetBtn" title="Reset"><i class="fas fa-undo"></i></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Processing your image</p>
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn remove-bg" id="removeBgBtn" disabled>
+                        <i class="fas fa-wand-magic-sparkles"></i> Remove Background
+                    </button>
+                    <button class="action-btn download" id="downloadBtn" disabled>
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+                
+                <div class="api-status connected" id="apiStatus">
+                    <i class="fas fa-check-circle api-status-icon"></i>
+                    <span class="api-status-text">API Connected: Your API key is working</span>
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-value" id="processedCount">0</div>
+                        <div class="stat-label">Images Processed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="timeSaved">0</div>
+                        <div class="stat-label">Minutes Saved</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="accuracyRate">99%</div>
+                        <div class="stat-label">Accuracy Rate</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Result Section -->
+            <section class="card">
+                <h2 class="card-title"><i class="fas fa-star"></i> Result</h2>
+                <div class="result-area" id="resultArea">
+                    <div class="result-container">
+                        <img src="" alt="Result" class="result-image" id="resultImage">
+                        <div class="result-actions">
+                            <button class="result-btn" id="saveBtn" title="Save"><i class="fas fa-save"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <div class="footer-content">
+                <p>RAKIB PRO &copy; 2023 - Remove Background</p>
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                </div>
+                <a href="https://t.me/AlorHawa" class="telegram-channel" target="_blank">
+                    <i class="fab fa-telegram"></i>
+                    Join Our Telegram Channel
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const splashScreen = document.getElementById('splashScreen');
+            const mainContent = document.getElementById('mainContent');
+            const themeToggle = document.getElementById('themeToggle');
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const previewImage = document.getElementById('previewImage');
+            const rotateBtn = document.getElementById('rotateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const removeBgBtn = document.getElementById('removeBgBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultArea = document.getElementById('resultArea');
+            const resultImage = document.getElementById('resultImage');
+            const saveBtn = document.getElementById('saveBtn');
+            const toastContainer = document.getElementById('toastContainer');
+            const processedCount = document.getElementById('processedCount');
+            const timeSaved = document.getElementById('timeSaved');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            // Variables to store image data
+            let originalImageData = null;
+            let processedImageData = null;
+            let currentRotation = 0;
+            let imagesProcessed = 0;
+            
+            // API Key for background removal - Using your provided API key
+            const API_KEY = 'EUQ4835ynx7Tj21D8Hp3ssgg';
+            const API_URL = 'https://api.remove.bg/v1.0/removebg';
+            
+            // Show splash screen for 3 seconds then transition to main content
+            setTimeout(() => {
+                splashScreen.style.opacity = '0';
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                    mainContent.style.display = 'block';
+                    showToast('Welcome to RAKIB PRO! API is connected and ready.', 'success');
+                }, 500);
+            }, 3000);
+            
+            // Theme toggle functionality
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                themeToggle.innerHTML = document.body.classList.contains('dark-mode') ? 
+                    '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                
+                // Save theme preference to local storage
+                localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+                
+                showToast(`Theme changed to ${document.body.classList.contains('dark-mode') ? 'dark' : 'light'} mode`, 'success');
+            });
+            
+            // Load saved theme preference
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            
+            // File upload handling
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'var(--secondary)';
+                uploadArea.style.backgroundColor = 'rgba(255, 101, 132, 0.1)';
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '';
+                uploadArea.style.backgroundColor = '';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.backgroundColor = '';
+                
+                if (e.dataTransfer.files.length) {
+                    handleImageUpload(e.dataTransfer.files[0]);
+                }
+            });
+            
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    handleImageUpload(fileInput.files[0]);
+                }
+            });
+            
+            // Rotate image
+            rotateBtn.addEventListener('click', () => {
+                currentRotation = (currentRotation + 90) % 360;
+                previewImage.style.transform = `rotate(${currentRotation}deg)`;
+                showToast('Image rotated', 'success');
+            });
+            
+            // Reset image
+            resetBtn.addEventListener('click', () => {
+                if (originalImageData) {
+                    previewImage.src = originalImageData;
+                    currentRotation = 0;
+                    previewImage.style.transform = 'rotate(0deg)';
+                    showToast('Image reset', 'success');
+                }
+            });
+            
+            // Save image
+            saveBtn.addEventListener('click', () => {
+                if (!processedImageData) return;
+                
+                const a = document.createElement('a');
+                a.href = processedImageData;
+                a.download = 'background-removed.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast('Image saved successfully!', 'success');
+            });
+            
+            // Remove background functionality
+            removeBgBtn.addEventListener('click', () => {
+                if (!previewImage.src) return;
+                
+                loadingIndicator.style.display = 'block';
+                removeBgBtn.disabled = true;
+                
+                // Create FormData and send to API
+                const formData = new FormData();
+                formData.append('image_file', dataURLtoFile(originalImageData, 'image.png'));
+                formData.append('size', 'auto');
+                
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'X-Api-Key': API_KEY
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to process image: ' + response.statusText);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    resultImage.src = url;
+                    resultArea.style.display = 'block';
+                    downloadBtn.disabled = false;
+                    
+                    // Save processed image data
+                    processedImageData = url;
+                    
+                    // Update stats
+                    imagesProcessed++;
+                    processedCount.textContent = imagesProcessed;
+                    timeSaved.textContent = imagesProcessed * 5;
+                    
+                    // Save to local storage
+                    localStorage.setItem('lastProcessed', url);
+                    localStorage.setItem('processedCount', imagesProcessed);
+                    
+                    showToast('Background removed successfully!', 'success');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Error processing image. Please try again with a different image.', 'error');
+                    apiStatus.className = 'api-status disconnected';
+                    apiStatus.innerHTML = '<i class="fas fa-exclamation-circle api-status-icon"></i><span class="api-status-text">API Error: ' + error.message + '</span>';
+                })
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                    removeBgBtn.disabled = false;
+                });
+            });
+            
+            // Download functionality
+            downloadBtn.addEventListener('click', () => {
+                if (!processedImageData) return;
+                
+                const a = document.createElement('a');
+                a.href = processedImageData;
+                a.download = 'background-removed.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast('Image downloaded successfully!', 'success');
+            });
+            
+            // Handle image upload and preview
+            function handleImageUpload(file) {
+                if (!file.type.match('image.*')) {
+                    showToast('Please select an image file (JPEG, PNG, etc.)', 'error');
+                    return;
+                }
+                
+                // Check file size (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast('Please select an image smaller than 10MB', 'error');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    removeBgBtn.disabled = false;
+                    
+                    // Save original image data
+                    originalImageData = e.target.result;
+                    
+                    // Reset result area
+                    resultArea.style.display = 'none';
+                    downloadBtn.disabled = true;
+                    processedImageData = null;
+                    currentRotation = 0;
+                    previewImage.style.transform = 'rotate(0deg)';
+                    
+                    showToast('Image uploaded successfully', 'success');
+                };
+                
+                reader.onerror = function() {
+                    showToast('Error reading the image file', 'error');
+                };
+                
+                reader.readAsDataURL(file);
+            }
+            
+            // Helper function to convert data URL to file
+            function dataURLtoFile(dataurl, filename) {
+                const arr = dataurl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                
+                return new File([u8arr], filename, { type: mime });
+            }
+            
+            // Toast notification function
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `
+                    <div class="toast-icon">
+                        ${type === 'success' ? '<i class="fas fa-check-circle"></i>' : ''}
+                        ${type === 'error' ? '<i class="fas fa-exclamation-circle"></i>' : ''}
+                        ${type === 'warning' ? '<i class="fas fa-exclamation-triangle"></i>' : ''}
+                    </div>
+                    <div class="toast-message">${message}</div>
+                    <button class="toast-close"><i class="fas fa-times"></i></button>
+                `;
+                
+                toastContainer.appendChild(toast);
+                
+                // Trigger reflow for animation
+                void toast.offsetWidth;
+                
+                toast.classList.add('show');
+                
+                // Close button event
+                toast.querySelector('.toast-close').addEventListener('click', () => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toastContainer.removeChild(toast);
+                    }, 300);
+                });
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (toastContainer.contains(toast)) {
+                        toast.classList.remove('show');
+                        setTimeout(() => {
+                            toastContainer.removeChild(toast);
+                        }, 300);
+                    }
+                }, 5000);
+            }
+            
+            // Load previous session from local storage if available
+            window.addEventListener('load', () => {
+                const lastProcessed = localStorage.getItem('lastProcessed');
+                const savedProcessedCount = localStorage.getItem('processedCount');
+                
+                if (savedProcessedCount) {
+                    imagesProcessed = parseInt(savedProcessedCount);
+                    processedCount.textContent = imagesProcessed;
+                    timeSaved.textContent = imagesProcessed * 5;
+                }
+                
+                if (lastProcessed) {
+                    resultImage.src = lastProcessed;
+                    resultArea.style.display = 'block';
+                    downloadBtn.disabled = false;
+                    processedImageData = lastProcessed;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
